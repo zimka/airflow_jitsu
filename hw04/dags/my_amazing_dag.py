@@ -15,6 +15,9 @@ FILENAME_CURRENT = 'coronadata.csv'
 
 
 def parse_to_df(data):
+    """
+    Парсит dict из api в pd.DataFrame нужного формата 
+    """
     rudata = data['russia_stat_struct']
     dates = pd.Series(rudata['dates'], name='date').to_frame()
 
@@ -41,6 +44,9 @@ def parse_to_df(data):
 
 
 def dump_corona_data():
+    """
+    Скачивает из апи данные и сохраняет дамп на диск
+    """
     response = requests.get(BASE_URL)
     if not response.ok:
         raise RuntimeError(f"Can't load data {response} from {BASE_URL}")

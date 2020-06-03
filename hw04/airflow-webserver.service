@@ -1,0 +1,14 @@
+[Unit]
+Description=Airflow webserver daemon
+
+[Service]
+User=ubuntu
+Group=ubuntu
+Type=simple
+ExecStart=/bin/bash -a -c 'source /home/ubuntu/venv/bin/activate && airflow webserver'
+Restart=on-failure
+RestartSec=5s
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target

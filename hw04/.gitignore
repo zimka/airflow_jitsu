@@ -1,2 +1,4 @@
 *.db
 *.pid
+venv/
+logs/
