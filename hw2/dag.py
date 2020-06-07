@@ -38,18 +38,18 @@ with DAG(
         dag=dag
     )
 
-    read_pg_engine = PostgresHook(conn_id=READ_POSTGRES_HOOK_ID).get_sqlalchemy_engine()
+    read_pg_engine = PostgresHook(postgres_conn_id=READ_POSTGRES_HOOK_ID).get_sqlalchemy_engine()
     customers_n_goods_step = PythonOperator(
         task_id='customers_n_goods_step',
         python_callable=lambda: read_customers_n_goods(engine=read_pg_engine),
         dag=dag
     )
 
-    write_pg_engine = PostgresHook(conn_id=WRITE_POSTGRES_HOOK_ID).get_sqlalchemy_engine()
+    write_pg_engine = PostgresHook(postgres_conn_id=WRITE_POSTGRES_HOOK_ID).get_sqlalchemy_engine()
 
     def save_dataset():
         dataset = compile_dataset()
-        OrderDataset.dump_dataset(dataset=dataset, engine=write_pg_engine)
+        OrderDataset.dump_dataframe(dataset=dataset, engine=write_pg_engine)
 
     save_dataset_step = PythonOperator(
         task_id='save_dataset',

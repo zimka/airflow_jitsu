@@ -29,7 +29,7 @@ class OrderDataset(Base):
         return create_engine(sqa_toy_string)
 
     @classmethod
-    def dump_dataframe(cls, dataset_df, engine=None):
+    def dump_dataframe(cls, dataset, engine=None):
         if engine is None:
             engine = cls.get_toy_engine()
 
@@ -38,7 +38,7 @@ class OrderDataset(Base):
         session = Session()
         values = [
             data.to_dict() for num, data
-            in dataset_df.reset_index().iterrows()
+            in dataset.reset_index().iterrows()
         ]
         cls.bulk_upsert(session, values)
         session.close()
