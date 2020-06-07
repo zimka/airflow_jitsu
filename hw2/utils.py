@@ -5,13 +5,13 @@ import logging
 import os
 
 import pandas as pd
+import numpy as np
 import requests
 from sqlalchemy import create_engine
 
-LOG_PATH = '/home/ubuntu/tasks.log'
-log = logging.getLogger('airflow_task_logger')
+log = logging.getLogger('hw2_logger')
 log.setLevel(logging.INFO)
-fh = logging.FileHandler(LOG_PATH)
+fh = logging.FileHandler('/home/ubuntu/tasks.log')
 fh.setFormatter(
     logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 )
@@ -43,20 +43,21 @@ class BicycleCache:
         self.root_path = root_path
 
     def set(self, key: Key, value: pd.DataFrame) -> bool:
-        value.to_csv(os.path.join(self.root_path, str(key)))
+        value.to_csv(os.path.join(self.root_path, str(key.value)))
 
     def get(self, key: Key) -> pd.DataFrame:
-        return pd.read_csv(os.path.join(self.root_path, str(key)), index_col=0)
+        return pd.read_csv(os.path.join(self.root_path, str(key.value)), index_col=0)
 
 
 @log_execution
-def read_orders(save=True):
+def read_orders(url=None, save=True):
     """
     Читает из csv заказы. Опционально сохраняет в кэш.
     `id заказа` считается PK - дубликаты выбрасываются с
      приоритетом первой записи.
     """
-    url = 'https://airflow101.python-jitsu.club/orders.csv'
+    if url is None:
+        url = 'https://airflow101.python-jitsu.club/orders.csv'
     expected_columns = ['id заказа', 'uuid заказа', 'название товара', 'дата заказа',
        'количество', 'ФИО', 'email']
     orders = pd.read_csv(url)
@@ -70,13 +71,14 @@ def read_orders(save=True):
 
 
 @log_execution
-def read_transactions(save=True):
+def read_transactions(url=None, save=True):
     """
     Читает из csv заказы. Опционально сохраняет в кэш.
     index(uuid) считается PK - дубликаты выбрасываются с
     приоритетом первой записи (но вроде их нет здесь).
     """
-    url = 'https://api.jsonbin.io/b/5ed7391379382f568bd22822'
+    if url is None:
+        url = 'https://api.jsonbin.io/b/5ed7391379382f568bd22822'
     response = requests.get(url)
     assert response.ok
     trans = pd.read_json(response.text, orient='index')
@@ -88,14 +90,14 @@ def read_transactions(save=True):
 
 
 @log_execution
-def read_customers_n_goods(save=True):
+def read_customers_n_goods(engine=None, save=True):
     """
     Читает из базы юзеров и товары. Опционально сохраняет в кэш.
     customers.id - PK, не проверяем дубликаты.
     Для goods.id - не PK, проверяются дубликаты. :(
     """
-    sqa_string = "postgresql+psycopg2://shop:1ec4fae2cb7a90b6b25736d0fa5ff9590e11406@109.234.36.184:5432/postgres"
-    engine = create_engine(sqa_string)
+    if engine is None:
+        engine = get_debug_read_engine()
     customers = pd.read_sql_table('customers', engine)
     goods = pd.read_sql_table('goods', engine).drop_duplicates(subset='id', keep='first')
 
@@ -107,15 +109,13 @@ def read_customers_n_goods(save=True):
 
 
 @log_execution
-def compile_dataset(orders=None, transactions=None, customers=None, goods=None, save=True):
+def compile_dataset(orders=None, transactions=None, customers=None, goods=None):
     """
     Сохраняет объекдиненный датасет в базу.
     Читает данные из кэша, если он не переданы в аргументах.
     Данные джойнятся так, чтоб оставались только чистые записи
     (все отсутствующие ключи выбрасываются)
     """
-    sqa_string = "postgresql+psycopg2://toy:toy:127.0.0.1:5432/sandbox"
-
     cache = BicycleCache()
     if orders is None:
         orders = cache.get(BicycleCache.Key.ORDERS)
@@ -127,24 +127,30 @@ def compile_dataset(orders=None, transactions=None, customers=None, goods=None, 
         goods = cache.get(BicycleCache.Key.GOODS)
 
     # Join всего, везде INNER - оставляем только чистые данные
-    total = orders.join(
+    dataset = orders.join(
         transactions.set_index('uuid'), on='uuid', how='inner'
     ).join(
         customers.set_index('email'), on='email', how='inner', rsuffix='_customer',
     ).join(
         goods.set_index('name'), on='good_title', how='inner', rsuffix='_good'
-    )
-    total = total[['username', 'good_title', 'birth_date', 'success', 'amount', 'price', 'date']]
-    total['name'] = total.pop('username')
+    ).set_index('uuid')
+    dataset = dataset[['username', 'good_title', 'birth_date', 'success', 'amount', 'price', 'date']]
+    dataset['name'] = dataset.pop('username')
     now = datetime.datetime.now()
-    birth = pd.to_datetime(total.pop('birth_date'))
-    total['age'] = (
+    birth = pd.to_datetime(dataset.pop('birth_date'))
+    dataset['age'] = (
         -(birth - now).dt.days / 365.25
     ).astype(int)
-    total['payment_status'] = total.pop('success')
-    total['total_price'] = total.pop('price') * total['amount']
-    total = total[['name', 'age', 'good_title', 'date', 'payment_status', 'total_price', 'amount']]
-    return total
+    dataset['payment_status'] = dataset.pop('success')
+    dataset['total_price'] = np.round(dataset.pop('price') * dataset['amount'], 2)
+    dataset = dataset[['name', 'age', 'good_title', 'date', 'payment_status', 'total_price', 'amount']]
+    return dataset
 
 
-
+def get_debug_read_engine():
+    """
+    Получение connection не через hook, а через connection_string из env
+    """
+    sqa_string = os.environ.get("AIRFLOW_DEBUG_READ_ENGINE_CONNECTION_STRING")
+    engine = create_engine(sqa_string)
+    return engine

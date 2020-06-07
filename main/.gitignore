@@ -1,0 +1,5 @@
+airflow-webserver.pid
+airflow-scheduler.pid
+logs/
+venv/
+airflow.db

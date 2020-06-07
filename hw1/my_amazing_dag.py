@@ -16,7 +16,7 @@ FILENAME_CURRENT = 'coronadata.csv'
 
 def parse_to_df(data):
     """
-    Парсит dict из api в pd.DataFrame нужного формата 
+    Парсит dict из api в pd.DataFrame нужного формата
     """
     rudata = data['russia_stat_struct']
     dates = pd.Series(rudata['dates'], name='date').to_frame()
@@ -71,7 +71,7 @@ default_args = {
 }
 
 dag = DAG(
-    'corona_dag',
+    'DAG_CORONA_HW1',
     default_args=default_args,
     description='Collects and dumps corona data.',
     schedule_interval=datetime.timedelta(days=1),
