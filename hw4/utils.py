@@ -38,14 +38,10 @@ def is_saved_data_sane() -> bool:
     """
     cache = BicycleCache()
 
-    if orders is None:
-        orders = cache.get(BicycleCache.Key.ORDERS)
-    if transactions is None:
-        transactions = cache.get(BicycleCache.Key.TRANS)
-    if customers is None:
-        customers = cache.get(BicycleCache.Key.CUSTOMERS)
-    if goods is None:
-        goods = cache.get(BicycleCache.Key.GOODS)
+    orders = cache.get(BicycleCache.Key.ORDERS)
+    transactions = cache.get(BicycleCache.Key.TRANS)
+    customers = cache.get(BicycleCache.Key.CUSTOMERS)
+    goods = cache.get(BicycleCache.Key.GOODS)
 
     dataframes = [orders, customers, goods, transactions]
     if any([df is None for df in dataframes]):

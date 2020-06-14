@@ -30,11 +30,12 @@ def check_data_func(**kwargs):
     sane = is_saved_data_sane()
     if sane:
         return 'save_dataset_step'
+    ti = kwargs['ti']
     error_message = f"""
     Failed to save dataset, data is broken.
-    Dag({kwargs['dag']}), Task({kwargs['task'].task_id})
+    Dag({ti.dag_id}), Task({ti.task_id})
     """
-    kwargs['ti'].xcom_push(key='error_message', value=error_message)
+    ti.xcom_push(key='error_message', value=error_message)
     return 'alert_telegram_step'
 
 
@@ -86,7 +87,8 @@ with DAG(
     check_data_step = BranchPythonOperator(
         task_id='check_data_step',
         python_callable=check_data_func,
-        dag=dag
+        dag=dag,
+        provide_context=True
     )
 
     save_dataset_step = PythonOperator(
@@ -98,7 +100,8 @@ with DAG(
     alert_telegram_step = PythonOperator(
         task_id='alert_telegram_step',
         python_callable=alert_telegram_func,
-        dag=dag
+        dag=dag,
+        provide_context=True
     )
 
     check_db_step >> order_step >> trans_step >> customers_n_goods_step
