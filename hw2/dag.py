@@ -19,6 +19,12 @@ default_args = {
     'catchup_by_default': False # no backfill
 }
 
+
+def save_dataset():
+    dataset = compile_dataset()
+    OrderDataset.dump_dataframe(dataset=dataset, engine=write_pg_engine)
+
+
 with DAG(
         'DAG_ORDERS_DATASET_HW2',
         default_args=default_args,
@@ -46,10 +52,6 @@ with DAG(
     )
 
     write_pg_engine = PostgresHook(postgres_conn_id=WRITE_POSTGRES_HOOK_ID).get_sqlalchemy_engine()
-
-    def save_dataset():
-        dataset = compile_dataset()
-        OrderDataset.dump_dataframe(dataset=dataset, engine=write_pg_engine)
 
     save_dataset_step = PythonOperator(
         task_id='save_dataset',

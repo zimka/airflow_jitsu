@@ -29,11 +29,15 @@ class OrderDataset(Base):
         return create_engine(sqa_toy_string)
 
     @classmethod
+    def init_schema(cls, engine):
+        Base.metadata.create_all(engine)
+
+    @classmethod
     def dump_dataframe(cls, dataset, engine=None):
         if engine is None:
             engine = cls.get_toy_engine()
 
-        Base.metadata.create_all(engine)
+        cls.init_schema(engine)
         Session = sessionmaker(bind=engine)
         session = Session()
         values = [
