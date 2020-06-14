@@ -46,7 +46,10 @@ class BicycleCache:
         value.to_csv(os.path.join(self.root_path, str(key.value)))
 
     def get(self, key: Key) -> pd.DataFrame:
-        return pd.read_csv(os.path.join(self.root_path, str(key.value)), index_col=0)
+        data_path = os.path.join(self.root_path, str(key.value))
+        if not os.path.exists(data_path):
+            return None
+        return pd.read_csv(data_path, index_col=0)
 
 
 @log_execution
@@ -79,7 +82,7 @@ def read_transactions(url=None, save=True):
     """
     if url is None:
         url = 'https://api.jsonbin.io/b/5ed7391379382f568bd22822'
-    response = requests.get(url)
+    response = requests.get(url, timeout=3)
     assert response.ok
     trans = pd.read_json(response.text, orient='index')
     trans.index.name = 'uuid'
